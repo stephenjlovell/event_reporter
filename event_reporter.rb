@@ -65,12 +65,18 @@ class EventReporter
     else
       filename = args[0]
     end
-    puts "loading file: #{filename}"
-    contents = CSV.open filename, headers: true, header_converters: :symbol
 
+    begin
+      contents = CSV.open filename, headers: true, header_converters: :symbol
+    rescue
+      puts "Unable to read from file #{filename}.  Make sure this is a valid path to a CSV file."
+      return
+    end
     # fields:  id,RegDate,first_Name,last_Name,Email_Address,HomePhone,Street,City,State,Zipcode
     # legislators fields: FIRST_NAME, LAST_NAME, WEBSITE
+
     @data = [] # clear out any old data.
+    puts "loading file: #{filename}"
 
     contents.each do |row|
       zip = clean_zipcode(row[:zipcode])
