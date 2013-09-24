@@ -68,12 +68,8 @@ class EventReporter
     puts "loading file: #{filename}"
     contents = CSV.open filename, headers: true, header_converters: :symbol
 
-
-    # fields:
-    # id,RegDate,first_Name,last_Name,Email_Address,HomePhone,Street,City,State,Zipcode
-    # legislators fields:
-    # FIRST_NAME, LAST_NAME, WEBSITE
-
+    # fields:  id,RegDate,first_Name,last_Name,Email_Address,HomePhone,Street,City,State,Zipcode
+    # legislators fields: FIRST_NAME, LAST_NAME, WEBSITE
     @data = [] # clear out any old data.
 
     contents.each do |row|
@@ -85,10 +81,8 @@ class EventReporter
       record = Attendee.new(row[:last_name],row[:first_name], row[:email_address], zip, 
                             row[:city], row[:state], row[:street], phone, legislators)
       @data.push(record)
-      # for testing:
-      @queue.push(record)
     end
-    print_records_as_table @queue
+    print_records_as_table(@data)
   end
 
   def help(args)
@@ -142,7 +136,7 @@ class EventReporter
     if @queue.empty?
       puts "No items in queue.  Use find to load items into queue."
     elsif args.empty?
-      tp @queue
+      print_records_as_table(@queue)
     else
       command = args.shift
       if command == 'by'
@@ -155,15 +149,13 @@ class EventReporter
   end
 
   def print_queue_by(args)
-    # should add option to sort in ascending or descending order.
     if args.empty?
-      tp @queue
+      print_records_as_table(@queue)
     else
       command = args.shift.to_sym
       if @queue.first.respond_to?(command)
-      # if Attendee.respond_to?(command)
         @queue.sort! { |a,b| a[command] <=> b[command] }
-        tp @queue
+        print_records_as_table(@queue)
       else
         invalid_command("queue print by #{command.to_s}")
       end
@@ -171,10 +163,11 @@ class EventReporter
   end
 
   def print_records_as_table(obj)
-  tp obj, :last_name, :first_name, :email, :zipcode,
-          :city, :state, :phone_number, {legislators: {width: 80}}
+    puts "\n"
+    tp obj, :last_name, :first_name, :email, :zipcode,
+            :city, :state, :phone_number, {legislators: {width: 80}}
+    puts "\n"
   end
-
 
   def save_queue(args)
     command = args.shift
@@ -194,9 +187,43 @@ class EventReporter
 
   def find(args)
     # 'find <attribute> <criteria>' => 'Loads all records matching the criteria for the given attribute into the queue.' } 
-
+    if @data.empty?
+      puts "no data currently loaded. use load <filename> to load a data file."
+    elsif args.empty?
+      find_all
+    else
+      attribute = args.shift.to_sym
+      if @data.first.respond_to?(attribute)
+        find_by(attribute, args)
+      else
+        invalid_command("find #{attribute.to_s}")
+      end
+    end
   end
 
+  def find_by(attribute, args)
+    if args.empty?
+      find_all
+    else
+      criteria = args.join(" ").downcase
+      results = @data.select { |d| d[attribute].downcase == criteria } 
+      if results.empty?
+        puts "no records found with #{attribute.to_s} matching criteria #{criteria}"
+      else
+        results.each { |r| @queue.push(r) }
+      end
+    end
+  end
+
+  def find_all
+    print "add all #{@data.length} data records to queue? (y/n): "
+    response = gets.chomp.downcase
+    if response == "y" || response == "yes"
+      @queue = []
+      @data.each { |d| @queue.push(d) }
+      puts "all data records loaded into queue."
+    end
+  end
 
 end
 
